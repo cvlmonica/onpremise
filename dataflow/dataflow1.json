@@ -1,0 +1,65 @@
+{
+	"name": "dataflow1",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "salesorderdetail",
+						"type": "DatasetReference"
+					},
+					"name": "salesOrderdetail"
+				},
+				{
+					"dataset": {
+						"referenceName": "salesorderheader",
+						"type": "DatasetReference"
+					},
+					"name": "salesorderheader"
+				},
+				{
+					"dataset": {
+						"referenceName": "product",
+						"type": "DatasetReference"
+					},
+					"name": "product"
+				},
+				{
+					"dataset": {
+						"referenceName": "customer",
+						"type": "DatasetReference"
+					},
+					"name": "customer"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "Json1",
+						"type": "DatasetReference"
+					},
+					"name": "sink1"
+				}
+			],
+			"transformations": [
+				{
+					"name": "Join1"
+				},
+				{
+					"name": "Join2"
+				},
+				{
+					"name": "Join3"
+				},
+				{
+					"name": "Select1"
+				},
+				{
+					"name": "ConditionalSplit1"
+				}
+			],
+			"script": "parameters{\n\tcustomerName as string\n}\nsource(output(\n\t\tsalesorderid as integer,\n\t\tlinetotal as decimal(38,6),\n\t\tproductid as integer\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tquery: 'select salesorderid ,linetotal,productid from saleslt.salesorderdetail',\n\tformat: 'query') ~> salesOrderdetail\nsource(output(\n\t\tsalesordernumber as string,\n\t\tsalesorderid as integer,\n\t\torderdate as timestamp,\n\t\tcustomerid as integer\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tquery: 'select salesordernumber,salesorderid,orderdate ,\\ncustomerid\\nfrom saleslt.salesorderheader',\n\tformat: 'query') ~> salesorderheader\nsource(output(\n\t\tproductid as integer,\n\t\tname as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tquery: 'select productid ,name from saleslt.product',\n\tformat: 'query') ~> product\nsource(output(\n\t\tcustomerid as integer,\n\t\tfirstname as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tquery: 'select customerid,firstname from saleslt.customer',\n\tformat: 'query') ~> customer\nsalesOrderdetail, salesorderheader join(salesOrderdetail@salesorderid == salesorderheader@salesorderid,\n\tjoinType:'inner',\n\tbroadcast: 'auto')~> Join1\nJoin1, product join(salesOrderdetail@productid == product@productid,\n\tjoinType:'inner',\n\tbroadcast: 'auto')~> Join2\nJoin2, customer join(salesorderheader@customerid == customer@customerid,\n\tjoinType:'inner',\n\tbroadcast: 'auto')~> Join3\nJoin3 select(mapColumn(\n\t\tsales = linetotal,\n\t\tsalesordernumber,\n\t\torderdate,\n\t\tproductname = name,\n\t\tname = firstname\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> Select1\nSelect1 split(name==$customerName,\n\tdisjoint: false) ~> ConditionalSplit1@(name, others)\nConditionalSplit1@name sink(input(\n\t\tsalesordernumber as string,\n\t\torderdate as string,\n\t\tfirstname as string,\n\t\tname as string,\n\t\tsales as double\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> sink1"
+		}
+	}
+}

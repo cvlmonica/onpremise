@@ -1,0 +1,9 @@
+{
+	"name": "monicacvladf",
+	"location": "eastus",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "92306056-485d-4b99-abe4-095d113f3253",
+		"tenantId": "0912c78d-18da-43f4-bf58-bf2848b32693"
+	}
+}
